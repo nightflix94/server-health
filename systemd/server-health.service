@@ -1,0 +1,28 @@
+[Unit]
+Description=Collect server health and report it to Telegram
+Documentation=https://core.telegram.org/bots/api#sendmessage
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/server-health/server-health.sh
+EnvironmentFile=/etc/server-health.env
+DynamicUser=yes
+StateDirectory=server-health
+UMask=0077
+
+# Service hardening
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=yes
+

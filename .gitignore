@@ -1,0 +1,23 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+server-health.env
+server-health.env.local
+
+# Runtime state and logs
+.server-health-state/
+state/
+*.log
+*.pid
+*.tmp
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
