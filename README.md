@@ -16,6 +16,22 @@ between checks.
 
 All intervals and thresholds can be changed in `/etc/server-health.env`.
 
+## Notification icons
+
+Telegram messages use icons so their status and warning type are easy to spot:
+
+| Icon | Meaning |
+| --- | --- |
+| 🚨 | One or more monitored values have reached their alert threshold |
+| 🔥 | CPU usage has reached its threshold |
+| 🧠 | RAM usage has reached its threshold |
+| 💾 | Disk usage has reached its threshold |
+| ✅ | The server has recovered and all monitored values are below their thresholds |
+| 💚 | Routine server health report; no alert is active |
+
+When a 🔥 CPU warning is active, the alert also lists the five processes using
+the most CPU and their systemd services when that information is available.
+
 ## Requirements
 
 - Linux with `/proc`
