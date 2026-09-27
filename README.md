@@ -10,6 +10,7 @@ between checks.
 - Checks the server every five minutes.
 - Sends a routine health report every hour.
 - Sends an immediate alert when CPU, RAM, or disk usage reaches its threshold.
+- Includes the top five processes and their systemd services in CPU alerts.
 - Repeats an ongoing alert no more than once every 30 minutes.
 - Sends a recovery message when all values return below their thresholds.
 
@@ -18,7 +19,7 @@ All intervals and thresholds can be changed in `/etc/server-health.env`.
 ## Requirements
 
 - Linux with `/proc`
-- Bash, `awk`, `curl`, `df`, and systemd
+- Bash, `awk`, `curl`, `df`, `ps`, and systemd
 - Outbound HTTPS access to `api.telegram.org`
 
 ## Telegram setup

@@ -44,7 +44,7 @@ require_percent() {
   }
 }
 
-for command_name in awk curl date df hostname mkdir mv sleep; do
+for command_name in awk curl date df hostname mkdir mv ps sleep; do
   require_command "$command_name"
 done
 
@@ -93,6 +93,37 @@ format_uptime() {
   else
     printf '%dm' "$minutes"
   fi
+}
+
+service_for_pid() {
+  local pid="$1"
+
+  [[ -r "/proc/$pid/cgroup" ]] || return
+  awk -F: '
+    {
+      count = split($NF, path, "/")
+      for (i = count; i >= 1; i--) {
+        if (path[i] ~ /\.service$/) {
+          print path[i]
+          exit
+        }
+      }
+    }
+  ' "/proc/$pid/cgroup" 2>/dev/null
+}
+
+format_top_cpu_processes() {
+  local pid cpu command service found=0
+
+  while read -r pid cpu command; do
+    [[ -n "${pid:-}" ]] || continue
+    service="$(service_for_pid "$pid" || true)"
+    [[ -n "$service" ]] || service="no systemd service"
+    printf '• %s%% %s — %s (PID %s)\n' "$cpu" "$command" "$service" "$pid"
+    found=1
+  done < <(ps -eo pid=,pcpu=,comm= --sort=-pcpu | awk 'NR <= 5')
+
+  (( found == 1 )) || printf 'Process information unavailable\n'
 }
 
 read_state() {
@@ -197,12 +228,16 @@ disk_used_text="$(format_kib "$disk_used_kib")"
 disk_total_text="$(format_kib "$disk_total_kib")"
 
 alert_reasons=()
-awk -v actual="$cpu_percent" -v limit="$CPU_THRESHOLD_PERCENT" \
-  'BEGIN { exit !(actual >= limit) }' && alert_reasons+=("CPU ${cpu_percent}% >= ${CPU_THRESHOLD_PERCENT}%")
+cpu_alerting=0
+if awk -v actual="$cpu_percent" -v limit="$CPU_THRESHOLD_PERCENT" \
+  'BEGIN { exit !(actual >= limit) }'; then
+  alert_reasons+=("🔥 CPU ${cpu_percent}% >= ${CPU_THRESHOLD_PERCENT}%")
+  cpu_alerting=1
+fi
 awk -v actual="$memory_percent" -v limit="$MEMORY_THRESHOLD_PERCENT" \
-  'BEGIN { exit !(actual >= limit) }' && alert_reasons+=("RAM ${memory_percent}% >= ${MEMORY_THRESHOLD_PERCENT}%")
+  'BEGIN { exit !(actual >= limit) }' && alert_reasons+=("🧠 RAM ${memory_percent}% >= ${MEMORY_THRESHOLD_PERCENT}%")
 (( disk_percent >= DISK_THRESHOLD_PERCENT )) && \
-  alert_reasons+=("Disk ${disk_percent}% >= ${DISK_THRESHOLD_PERCENT}%")
+  alert_reasons+=("💾 Disk ${disk_percent}% >= ${DISK_THRESHOLD_PERCENT}%")
 
 metrics="Host: $host_name
 Time: $observed_at
@@ -226,8 +261,15 @@ if (( ${#alert_reasons[@]} > 0 )); then
   if (( was_alerting == 0 || now_epoch - last_alert >= ALERT_COOLDOWN_SECONDS )); then
     reason_text="$(printf '%s; ' "${alert_reasons[@]}")"
     reason_text="${reason_text%; }"
-    send_telegram "SERVER ALERT
-$reason_text
+    cpu_details=""
+    if (( cpu_alerting == 1 )); then
+      cpu_details="
+
+Top CPU consumers (snapshot):
+$(format_top_cpu_processes)"
+    fi
+    send_telegram "🚨 SERVER ALERT
+$reason_text$cpu_details
 
 $metrics"
     write_state last_alert "$now_epoch"
@@ -235,14 +277,14 @@ $metrics"
     write_state was_alerting 1
   fi
 elif (( was_alerting == 1 )); then
-  send_telegram "SERVER RECOVERED
+  send_telegram "✅ SERVER RECOVERED
 All monitored values are below their thresholds.
 
 $metrics"
   write_state last_report "$now_epoch"
   write_state was_alerting 0
 elif (( now_epoch - last_report >= REPORT_INTERVAL_SECONDS )); then
-  send_telegram "SERVER HEALTH
+  send_telegram "💚 SERVER HEALTH
 $metrics"
   write_state last_report "$now_epoch"
   write_state was_alerting 0
