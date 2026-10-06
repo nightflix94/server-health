@@ -10,7 +10,6 @@ elif [[ $# -gt 0 ]]; then
   exit 2
 fi
 
-: "${REPORT_INTERVAL_SECONDS:=3600}"
 : "${ALERT_COOLDOWN_SECONDS:=1800}"
 : "${CPU_THRESHOLD_PERCENT:=90}"
 : "${MEMORY_THRESHOLD_PERCENT:=90}"
@@ -48,7 +47,6 @@ for command_name in awk curl date df hostname mkdir mv ps sleep; do
   require_command "$command_name"
 done
 
-require_uint REPORT_INTERVAL_SECONDS "$REPORT_INTERVAL_SECONDS"
 require_uint ALERT_COOLDOWN_SECONDS "$ALERT_COOLDOWN_SECONDS"
 require_uint CURL_TIMEOUT_SECONDS "$CURL_TIMEOUT_SECONDS"
 require_percent CPU_THRESHOLD_PERCENT "$CPU_THRESHOLD_PERCENT"
@@ -247,12 +245,10 @@ RAM: $memory_used_text / $memory_total_text (${memory_percent}%)
 Disk $DISK_PATH: $disk_used_text / $disk_total_text (${disk_percent}%)
 Uptime: $uptime_text"
 
-last_report="$(read_state last_report 0)"
 last_alert="$(read_state last_alert 0)"
 was_alerting="$(read_state was_alerting 0)"
 
 if (( DRY_RUN == 1 )); then
-  last_report=0
   last_alert=0
   was_alerting=0
 fi
@@ -273,7 +269,6 @@ $reason_text$cpu_details
 
 $metrics"
     write_state last_alert "$now_epoch"
-    write_state last_report "$now_epoch"
     write_state was_alerting 1
   fi
 elif (( was_alerting == 1 )); then
@@ -281,11 +276,5 @@ elif (( was_alerting == 1 )); then
 All monitored values are below their thresholds.
 
 $metrics"
-  write_state last_report "$now_epoch"
-  write_state was_alerting 0
-elif (( now_epoch - last_report >= REPORT_INTERVAL_SECONDS )); then
-  send_telegram "💚 SERVER HEALTH
-$metrics"
-  write_state last_report "$now_epoch"
   write_state was_alerting 0
 fi

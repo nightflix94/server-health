@@ -1,14 +1,13 @@
 # Server Health Telegram Reporter
 
 A small Linux monitoring script that checks CPU, load average, RAM, disk usage,
-and uptime. It sends routine reports and threshold alerts through Telegram, then
+and uptime. It sends threshold alerts and recovery messages through Telegram, then
 exits. A systemd timer starts it every five minutes, so nothing stays running
 between checks.
 
 ## Behavior
 
 - Checks the server every five minutes.
-- Sends a routine health report every hour.
 - Sends an immediate alert when CPU, RAM, or disk usage reaches its threshold.
 - Includes the top five processes and their systemd services in CPU alerts.
 - Repeats an ongoing alert no more than once every 30 minutes.
@@ -27,7 +26,6 @@ Telegram messages use icons so their status and warning type are easy to spot:
 | 🧠 | RAM usage has reached its threshold |
 | 💾 | Disk usage has reached its threshold |
 | ✅ | The server has recovered and all monitored values are below their thresholds |
-| 💚 | Routine server health report; no alert is active |
 
 When a 🔥 CPU warning is active, the alert also lists the five processes using
 the most CPU and their systemd services when that information is available.
@@ -85,8 +83,8 @@ journalctl -u server-health.service --since today
 
 ## Safe local test
 
-To collect and print the current metrics without contacting Telegram or changing
-the saved alert state:
+To collect the current metrics and, when a threshold is breached, print the
+alert without contacting Telegram or changing the saved alert state:
 
 ```bash
 ./server-health.sh --dry-run
@@ -98,7 +96,6 @@ The defaults in `server-health.env.example` are:
 
 | Setting | Default | Meaning |
 | --- | ---: | --- |
-| `REPORT_INTERVAL_SECONDS` | `3600` | Routine report interval |
 | `ALERT_COOLDOWN_SECONDS` | `1800` | Minimum time between ongoing alerts |
 | `CPU_THRESHOLD_PERCENT` | `90` | CPU alert threshold |
 | `MEMORY_THRESHOLD_PERCENT` | `90` | RAM alert threshold |
